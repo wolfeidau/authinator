@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/SermoDigital/jose/crypto"
+	"github.com/wolfeidau/authinator/auth"
 	"github.com/wolfeidau/authinator/store/users"
 )
 
@@ -46,7 +47,7 @@ func TestAuthenticateUser(t *testing.T) {
 
 }
 
-func generateTestCerts() (*AuthCerts, error) {
+func generateTestCerts() (*auth.Certs, error) {
 
 	priv, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
@@ -99,5 +100,5 @@ func generateTestCerts() (*AuthCerts, error) {
 		return nil, err
 	}
 
-	return &AuthCerts{PrivateKey: privateKey, PublicKey: publicKey}, nil
+	return &auth.Certs{PrivateKey: privateKey, PublicKey: publicKey}, nil
 }

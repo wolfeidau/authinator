@@ -1,15 +1,12 @@
 package api
 
 import (
-	"crypto/rsa"
 	"fmt"
 	"net/http"
-	"time"
 
-	"github.com/SermoDigital/jose/crypto"
-	"github.com/SermoDigital/jose/jws"
 	"github.com/emicklei/go-restful"
 	"github.com/gorilla/schema"
+	"github.com/wolfeidau/authinator/auth"
 	"github.com/wolfeidau/authinator/models"
 	"github.com/wolfeidau/authinator/store/users"
 	"github.com/wolfeidau/authinator/util"
@@ -17,21 +14,15 @@ import (
 
 var decoder = schema.NewDecoder()
 
-// AuthCerts used by JWT to sign tokens
-type AuthCerts struct {
-	PublicKey  *rsa.PublicKey
-	PrivateKey *rsa.PrivateKey
-}
-
 // AuthResource user resource
 type AuthResource struct {
 	store      users.UserStore
-	certs      *AuthCerts
+	certs      *auth.Certs
 	authFilter restful.FilterFunction
 }
 
 // NewAuthResource create a new user resource
-func NewAuthResource(store users.UserStore, authFilter restful.FilterFunction, certs *AuthCerts) *AuthResource {
+func NewAuthResource(store users.UserStore, authFilter restful.FilterFunction, certs *auth.Certs) *AuthResource {
 	return &AuthResource{store, certs, authFilter}
 }
 
@@ -58,14 +49,14 @@ func (ar AuthResource) authenticateUser(req *restful.Request, resp *restful.Resp
 		return
 	}
 
-	auth := new(models.Authentication)
-	err = decoder.Decode(auth, req.Request.PostForm)
+	creds := new(models.Authentication)
+	err = decoder.Decode(creds, req.Request.PostForm)
 	if err != nil {
 		resp.WriteErrorString(http.StatusBadRequest, err.Error())
 		return
 	}
 
-	phash, err := ar.store.GetPasswordByLogin(auth.Login)
+	phash, err := ar.store.GetPasswordByLogin(creds.Login)
 	if err != nil {
 		if err == users.ErrUserNotFound {
 			resp.WriteHeaderAndEntity(http.StatusForbidden, errorMsg("Auth failed."))
@@ -76,7 +67,7 @@ func (ar AuthResource) authenticateUser(req *restful.Request, resp *restful.Resp
 		return
 	}
 
-	ok, err := util.CompareHashPassword(auth.Password, phash)
+	ok, err := util.CompareHashPassword(creds.Password, phash)
 	if err != nil {
 		resp.WriteErrorString(http.StatusBadRequest, err.Error())
 		return
@@ -87,26 +78,19 @@ func (ar AuthResource) authenticateUser(req *restful.Request, resp *restful.Resp
 		return
 	}
 
-	usr, err := ar.store.GetByLogin(auth.Login)
+	usr, err := ar.store.GetByLogin(creds.Login)
 	if err != nil {
 		resp.WriteHeaderAndEntity(http.StatusInternalServerError, errorMsg("Server error."))
 		return
 	}
 
-	// generate a token
-	var claims = jws.Claims{
-		"email": models.StringValue(usr.Email),
-		"exp":   time.Now().Add(24 * time.Hour).Unix(),
-	}
-
-	j := jws.NewJWT(claims, crypto.SigningMethodRS512)
-	b, err := j.Serialize(ar.certs.PrivateKey)
+	tok, err := auth.GenerateClaim(ar.certs, usr)
 	if err != nil {
 		resp.WriteHeaderAndEntity(http.StatusInternalServerError, errorMsg("Server error."))
 		return
 	}
 
-	resp.AddHeader("Authorization", fmt.Sprintf("Bearer %s", string(b)))
+	resp.AddHeader("Authorization", fmt.Sprintf("Bearer %s", tok))
 
 	resp.WriteHeader(http.StatusOK)
 }
