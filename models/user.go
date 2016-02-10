@@ -26,9 +26,9 @@ func NewUser(id, login, email, name string) *User {
 
 // User represents a authinator user.
 type User struct {
-	ID       *string `json:"id,omitempty"`
-	Login    *string `json:"login,omitempty"`
-	Email    *string `json:"email,omitempty"`
-	Name     *string `json:"name,omitempty"`
-	Password *string `json:"password,omitempty"`
+	ID       *string `json:"id,omitempty" gorethink:"id,omitempty"`
+	Login    *string `json:"login,omitempty" gorethink:"login"`
+	Email    *string `json:"email,omitempty" gorethink:"email"`
+	Name     *string `json:"name,omitempty" gorethink:"name,omitempty"`
+	Password *string `json:"password,omitempty" gorethink:"password"`
 }
