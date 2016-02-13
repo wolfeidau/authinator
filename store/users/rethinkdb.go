@@ -5,10 +5,12 @@ import (
 	"github.com/wolfeidau/authinator/models"
 )
 
-//var _ UserStore = &UserStoreRethinkDB{}
+var _ UserStore = &UserStoreRethinkDB{}
 
 var (
-	DBName    = "authinator"
+	// DBName is the name of the RethinkDB database
+	DBName = "authinator"
+	// TableName is the name of users table in the RethinkDB database
 	TableName = "users"
 )
 
@@ -122,5 +124,31 @@ func (us *UserStoreRethinkDB) Update(user *models.User) error {
 	return nil
 }
 
-// func (us *UserStoreRethinkDB) Delete(userID string) error                      {}
-// func (us *UserStoreRethinkDB) Exists(login string) (bool, error)               {}
+// Delete delete the user from the RethinkDB database.
+func (us *UserStoreRethinkDB) Delete(userID string) error {
+	_, err := r.DB(DBName).Table(TableName).Get(userID).Delete().RunWrite(us.session)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// Exists check if the user exists in the RethinkDB database.
+func (us *UserStoreRethinkDB) Exists(login string) (bool, error) {
+
+	res, err := r.DB(DBName).Table(TableName).Filter(map[string]interface{}{
+		"login": login,
+	}).Run(us.session)
+	if err != nil {
+		return false, err
+	}
+
+	defer res.Close()
+
+	if res.IsNil() {
+		return false, nil
+	}
+
+	return true, nil
+}
