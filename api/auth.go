@@ -35,8 +35,8 @@ func (ar AuthResource) Register(container *restful.Container) {
 	ws.Path("/auth").
 		Doc("Auth services").Consumes(restful.MIME_JSON).Produces(restful.MIME_JSON)
 
-	//
-	ws.Route(ws.POST("/login").Consumes("application/x-www-form-urlencoded").To(ar.authenticateUser).Doc("Get the current user").Operation("authenicateUser"))
+	ws.Route(ws.POST("/sign_in").Consumes("application/x-www-form-urlencoded").
+		To(ar.authenticateUser).Doc("Get the current user").Operation("authenicateUser"))
 
 	container.Add(ws)
 }
