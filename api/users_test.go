@@ -20,11 +20,7 @@ const (
 
 func TestGetUser(t *testing.T) {
 
-	store := users.NewUserStoreLocal()
-
-	store.Create(NewUser())
-
-	ws := NewUserResource(store, nil)
+	_, ws := setupResourceAndStore()
 
 	req := newRequest("PUT", "http://api.his.com/users", bytes.NewBufferString(updateUserJSON))
 
@@ -57,11 +53,7 @@ func TestCreateUser(t *testing.T) {
 
 func TestUpdateUser(t *testing.T) {
 
-	store := users.NewUserStoreLocal()
-
-	store.Create(NewUser())
-
-	ws := NewUserResource(store, nil)
+	_, ws := setupResourceAndStore()
 
 	req := newRequest("PUT", "http://api.his.com/users", bytes.NewBufferString(updateUserJSON))
 
@@ -79,11 +71,7 @@ func TestUpdateUser(t *testing.T) {
 
 func TestUpdatePassword(t *testing.T) {
 
-	store := users.NewUserStoreLocal()
-
-	store.Create(NewUser())
-
-	ws := NewUserResource(store, nil)
+	_, ws := setupResourceAndStore()
 
 	req := newRequest("PUT", "http://api.his.com/users/password", bytes.NewBufferString(updatePasswordJSON))
 
@@ -97,6 +85,16 @@ func TestUpdatePassword(t *testing.T) {
 	if recorder.Code != 200 {
 		t.Errorf("expected 200 got %d %s", recorder.Code, recorder.Body.String())
 	}
+}
+
+func setupResourceAndStore() (users.UserStore, *UserResource) {
+	store := users.NewUserStoreLocal()
+
+	store.Create(NewUser())
+
+	ws := NewUserResource(store, nil)
+
+	return store, ws
 }
 
 func newRequest(method, urlStr string, body io.Reader) *restful.Request {
