@@ -114,11 +114,15 @@ func (us *UserStoreRethinkDB) Update(user *models.User) error {
 		return nil
 	}
 
-	_, err := r.DB(DBName).Table(TableName).Get(userID).Update(map[string]interface{}{
+	res, err := r.DB(DBName).Table(TableName).Get(userID).Update(map[string]interface{}{
 		"name": models.StringValue(user.Name),
 	}).RunWrite(us.session)
 	if err != nil {
 		return err
+	}
+
+	if res.Replaced != 1 {
+		return ErrUserNotFound
 	}
 
 	return nil

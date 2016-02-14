@@ -10,7 +10,146 @@ import (
 	"github.com/wolfeidau/authinator/models"
 )
 
-func CreateDB(session *r.Session) {
+func TestGetUserRethinkDB(t *testing.T) {
+
+	_, userStore, userID, err := createUserStoreAndSession()
+
+	if assert.NoError(t, err, "connecting to rethinkdb") {
+
+		usr, err := userStore.GetByID(userID)
+		if assert.NoError(t, err, "getting user from rethinkdb") {
+
+			if assert.NotNil(t, usr) {
+				assert.Equal(t, models.StringValue(usr.Email), "mark@wolfe.id.au")
+			}
+		}
+
+		usr, err = userStore.GetByID("123")
+
+		if assert.Error(t, err) {
+			assert.Equal(t, err, ErrUserNotFound)
+		}
+
+	}
+}
+
+func TestGetUserByLoginRethinkDB(t *testing.T) {
+
+	_, userStore, userID, err := createUserStoreAndSession()
+
+	if assert.NoError(t, err, "connecting to rethinkdb") {
+
+		usr, err := userStore.GetByLogin("wolfeidau")
+
+		if assert.Nil(t, err) {
+			assert.Equal(t, "mark@wolfe.id.au", models.StringValue(usr.Email))
+			assert.Equal(t, userID, models.StringValue(usr.ID))
+		}
+
+		usr, err = userStore.GetByLogin("nothere")
+
+		if assert.Error(t, err) {
+			assert.Equal(t, err, ErrUserNotFound)
+		}
+	}
+}
+
+func TestGetPasswordByLoginRethinkDB(t *testing.T) {
+
+	_, userStore, _, err := createUserStoreAndSession()
+
+	if assert.NoError(t, err, "connecting to rethinkdb") {
+
+		pass, err := userStore.GetPasswordByLogin("wolfeidau")
+
+		if assert.NoError(t, err) {
+			assert.Equal(t, "LkSquwzxdgzSTqqc7Rku5NF8/uR7TBFO1IRF1Yj2c0sM4HEVGgp0bJadWtRAaINP", pass)
+		}
+
+		pass, err = userStore.GetPasswordByLogin("nothere")
+
+		if assert.Error(t, err) {
+			assert.Equal(t, err, ErrUserNotFound)
+		}
+
+	}
+}
+
+func TestCreateUserRethinkDB(t *testing.T) {
+
+	_, userStore, _, err := createUserStoreAndSession()
+
+	if assert.NoError(t, err, "connecting to rethinkdb") {
+
+		usr, err := userStore.Create(&models.User{
+			Email:    models.String("mark@wolfe.id.au"),
+			Login:    models.String("wolfeidau"),
+			Name:     models.String("Mark Wolfe"),
+			Password: models.String("LkSquwzxdgzSTqqc7Rku5NF8/uR7TBFO1IRF1Yj2c0sM4HEVGgp0bJadWtRAaINP"),
+		})
+
+		if assert.Nil(t, err) {
+			assert.NotNil(t, usr.ID)
+		}
+	}
+}
+
+func TestUpdateUserRethinkDB(t *testing.T) {
+
+	_, userStore, userID, err := createUserStoreAndSession()
+
+	if assert.NoError(t, err, "connecting to rethinkdb") {
+
+		err = userStore.Update(&models.User{
+			ID:   models.String(userID),
+			Name: models.String("Mark Wolfy"),
+		})
+
+		assert.NoError(t, err, "updating user in rethinkdb")
+
+		err = userStore.Update(&models.User{
+			Name: models.String("Mark Wolfy"),
+		})
+
+		if assert.Error(t, err) {
+			assert.Equal(t, err, ErrUserNotFound)
+		}
+	}
+
+}
+
+func TestDeleteUserRethinkDB(t *testing.T) {
+
+	_, userStore, userID, err := createUserStoreAndSession()
+
+	if assert.NoError(t, err, "connecting to rethinkdb") {
+
+		err = userStore.Delete(userID)
+		assert.Nil(t, err, "deleting user in rethinkdb")
+	}
+}
+
+func TestUserExistsRethinkDB(t *testing.T) {
+
+	_, userStore, _, err := createUserStoreAndSession()
+
+	if assert.NoError(t, err, "connecting to rethinkdb") {
+
+		exists, err := userStore.Exists("wolfeidau")
+
+		if assert.Nil(t, err, "checking if user exists in rethinkdb") {
+			assert.True(t, exists)
+		}
+
+		exists, err = userStore.Exists("nothere")
+
+		if assert.NoError(t, err, "checking if user exists in rethinkdb") {
+			assert.False(t, exists)
+		}
+	}
+}
+
+func createUserDB(session *r.Session) {
 	DBName = "authinator_test"
 
 	resp, err := r.DBCreate(DBName).RunWrite(session)
@@ -32,123 +171,25 @@ func CreateDB(session *r.Session) {
 	fmt.Printf("%d rows deleted\n", dresp.Deleted)
 }
 
-func DropDB(session *r.Session) {
-
-	resp, err := r.DBDrop(DBName).RunWrite(session)
-	if err != nil {
-		fmt.Print(err)
-	}
-
-	fmt.Printf("%d DB dropped, %d tables dropped\n", resp.DBsDropped, resp.TablesDropped)
-}
-
-func TestGetUserRethinkDB(t *testing.T) {
+func createUserStoreAndSession() (*r.Session, UserStore, string, error) {
 
 	session, err := r.Connect(r.ConnectOpts{
 		Address: "localhost:28015",
 	})
 	if err != nil {
-		t.Errorf("error connecting to rethinkdb: %s", err)
+		return nil, nil, "", err
 	}
 
-	CreateDB(session)
+	createUserDB(session)
 
 	userID, err := createUser(session)
 	if err != nil {
-		t.Errorf("error creating user in rethinkdb: %s", err)
+		return nil, nil, "", err
 	}
 
 	userStore := &UserStoreRethinkDB{session}
 
-	usr, err := userStore.GetByID(userID)
-
-	if err != nil {
-		t.Errorf("error getting user in rethinkdb: %s", err)
-	}
-
-	assert.Equal(t, models.StringValue(usr.Email), "mark@wolfe.id.au")
-}
-
-func TestGetUserByLoginRethinkDB(t *testing.T) {
-
-	session, err := r.Connect(r.ConnectOpts{
-		Address: "localhost:28015",
-	})
-	if err != nil {
-		t.Errorf("error connecting to rethinkdb: %s", err)
-	}
-
-	CreateDB(session)
-
-	userID, err := createUser(session)
-	if err != nil {
-		t.Errorf("error creating user in rethinkdb: %s", err)
-	}
-
-	userStore := &UserStoreRethinkDB{session}
-
-	usr, err := userStore.GetByLogin("wolfeidau")
-
-	if err != nil {
-		t.Errorf("error getting user in rethinkdb: %s", err)
-	}
-
-	assert.Equal(t, "mark@wolfe.id.au", models.StringValue(usr.Email))
-	assert.Equal(t, userID, models.StringValue(usr.ID))
-}
-
-func TestGetPasswordByLoginRethinkDB(t *testing.T) {
-
-	session, err := r.Connect(r.ConnectOpts{
-		Address: "localhost:28015",
-	})
-	if err != nil {
-		t.Errorf("error connecting to rethinkdb: %s", err)
-	}
-
-	CreateDB(session)
-
-	_, err = createUser(session)
-	if err != nil {
-		t.Errorf("error creating user in rethinkdb: %s", err)
-	}
-
-	userStore := &UserStoreRethinkDB{session}
-
-	pass, err := userStore.GetPasswordByLogin("wolfeidau")
-
-	if err != nil {
-		t.Errorf("error getting user in rethinkdb: %s", err)
-	}
-
-	assert.Equal(t, "LkSquwzxdgzSTqqc7Rku5NF8/uR7TBFO1IRF1Yj2c0sM4HEVGgp0bJadWtRAaINP", pass)
-}
-
-func TestCreateUserRethinkDB(t *testing.T) {
-
-	session, err := r.Connect(r.ConnectOpts{
-		Address: "localhost:28015",
-	})
-	if err != nil {
-		t.Errorf("error connecting to rethinkdb: %s", err)
-	}
-
-	CreateDB(session)
-
-	userStore := &UserStoreRethinkDB{session}
-
-	usr, err := userStore.Create(&models.User{
-		Email:    models.String("mark@wolfe.id.au"),
-		Login:    models.String("wolfeidau"),
-		Name:     models.String("Mark Wolfe"),
-		Password: models.String("LkSquwzxdgzSTqqc7Rku5NF8/uR7TBFO1IRF1Yj2c0sM4HEVGgp0bJadWtRAaINP"),
-	})
-
-	if err != nil {
-		t.Errorf("error getting user in rethinkdb: %s", err)
-	}
-
-	assert.NotNil(t, usr.ID)
+	return session, userStore, userID, nil
 }
 
 func createUser(session *r.Session) (string, error) {
