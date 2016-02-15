@@ -19,6 +19,11 @@ type UserStoreRethinkDB struct {
 	session *r.Session
 }
 
+// NewUserStoreRethinkDB create a new RethinkDB backed user store
+func NewUserStoreRethinkDB(session *r.Session) UserStore {
+	return &UserStoreRethinkDB{session}
+}
+
 // GetByID retrieve a user from RethinkDB
 func (us *UserStoreRethinkDB) GetByID(userID string) (*models.User, error) {
 
