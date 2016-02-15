@@ -22,6 +22,7 @@ TODO
 * [x] Stores users
 * [x] Authenticates users
 * [x] Supports RethinkDB as a datastore
+* [ ] Support for scopes and permission checks based on them
 * [ ] Email activation of accounts
 * [ ] Web interface
 
