@@ -55,11 +55,13 @@ func runCmdServe(cmd *cobra.Command, args []string) {
 		os.Exit(1)
 	}
 
-	ar := api.NewAuthResource(userStore, nil, certs)
+	jwtAuth := api.BuildJWTAuthFunc(userStore, certs)
+
+	ar := api.NewAuthResource(userStore, jwtAuth, certs)
 
 	ar.Register(wsContainer)
 
-	ur := api.NewUserResource(userStore, nil)
+	ur := api.NewUserResource(userStore, jwtAuth)
 
 	ur.Register(wsContainer)
 

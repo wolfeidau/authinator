@@ -94,3 +94,27 @@ func (ar AuthResource) authenticateUser(req *restful.Request, resp *restful.Resp
 
 	resp.WriteHeader(http.StatusOK)
 }
+
+// BuildJWTAuthFunc build the JWT authentication filter function
+func BuildJWTAuthFunc(store users.UserStore, certs *auth.Certs) restful.FilterFunction {
+	return func(req *restful.Request, resp *restful.Response, chain *restful.FilterChain) {
+		encoded := req.Request.Header.Get("Authorization")
+
+		if len(encoded) == 0 {
+			resp.WriteErrorString(401, "401: Not Authorized")
+			return
+		}
+
+		usr, err := auth.ValidateClaim(certs, encoded)
+
+		if err != nil {
+			resp.WriteErrorString(401, "401: Not Authorized")
+			return
+		}
+
+		// Extract the user_id
+		req.SetAttribute("user_id", models.StringValue(usr.ID))
+
+		chain.ProcessFilter(req, resp)
+	}
+}
