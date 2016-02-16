@@ -45,8 +45,6 @@ func runCmdServe(cmd *cobra.Command, args []string) {
 
 	userStore := users.NewUserStoreRethinkDB(session)
 
-	restful.TraceLogger(log.New(os.Stdout, "[restful] ", log.LstdFlags|log.Lshortfile))
-
 	wsContainer := restful.NewContainer()
 
 	certs, err := auth.GenerateTestCerts()
@@ -65,7 +63,7 @@ func runCmdServe(cmd *cobra.Command, args []string) {
 
 	ur.Register(wsContainer)
 
-	log.Printf("start listening on localhost:8080")
-	server := &http.Server{Addr: ":8080", Handler: wsContainer}
+	log.Printf("start listening on localhost:9090")
+	server := &http.Server{Addr: ":9090", Handler: wsContainer}
 	log.Fatal(server.ListenAndServe())
 }

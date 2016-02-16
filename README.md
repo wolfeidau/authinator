@@ -13,6 +13,35 @@ This is a simple authentication server which stores users and issues tokens, it 
 
 TODO
 
+## Register
+
+```
+curl -v -H "Content-Type: application/json; charset=UTF-8" -X POST \
+  -d '{"login":"mememe","email":"me@example.com","password":"mepass"}' http://localhost:9090/users
+```
+
+## Login
+
+```
+curl -v --data "login=mememe&password=mepass" http://localhost:9090/auth/sign_in
+```
+
+## Update current user
+
+```
+curl -v -H "Content-Type: application/json; charset=UTF-8" \
+  -H "Authorization: Bearer AS_ABOVE" \
+  -X PUT -d '{"name":"Me Me"}' http://localhost:9090/users
+```
+
+## Get current User
+
+```
+curl -v -H "Content-Type: application/json; charset=UTF-8" \
+  -H "Authorization: Bearer AS_ABOVE" \
+  -X GET http://localhost:9090/users
+```
+
 # dependencies
 
 * A data store, at the moment it supports RethinkDB with more to come.

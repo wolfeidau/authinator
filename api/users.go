@@ -196,7 +196,15 @@ func (ur UserResource) updatePassword(req *restful.Request, resp *restful.Respon
 		return
 	}
 
-	cusr.Password = models.String(password)
+	// hash the password
+	pass, err := util.HashPassword(password)
+
+	if err != nil {
+		resp.WriteHeaderAndEntity(http.StatusInternalServerError, errorMsg("Server error."))
+		return
+	}
+
+	cusr.Password = models.String(pass)
 
 	err = ur.store.Update(cusr)
 

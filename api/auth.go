@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/emicklei/go-restful"
 	"github.com/gorilla/schema"
@@ -105,7 +106,14 @@ func BuildJWTAuthFunc(store users.UserStore, certs *auth.Certs) restful.FilterFu
 			return
 		}
 
-		usr, err := auth.ValidateClaim(certs, encoded)
+		if !strings.HasPrefix(encoded, "Bearer ") {
+			resp.WriteErrorString(401, "401: Not Authorized")
+			return
+		}
+
+		tokens := strings.Split(encoded, " ")
+
+		usr, err := auth.ValidateClaim(certs, tokens[1])
 
 		if err != nil {
 			resp.WriteErrorString(401, "401: Not Authorized")
